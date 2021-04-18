@@ -7,10 +7,15 @@
 
 
 #define LIMITE 50
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-//creo estructura de semaforos 
+//creo estructura de semaforos
 struct semaforos {
     sem_t sem_mezclar;
+    sem_t sem_salar;
+    sem_t sem_usoSarten;
+    sem_t sem_hornearPan;
+    sem_t sem_armarSandwich;
 	//poner demas semaforos aqui
 };
 
@@ -18,7 +23,7 @@ struct semaforos {
 struct paso {
    char accion [LIMITE];
    char ingredientes[4][LIMITE];
-   
+
 };
 
 //creo los parametros de los hilos 
@@ -63,11 +68,75 @@ void* cortar(void *data) {
 	//llamo a la funcion imprimir le paso el struct y la accion de la funcion
 	imprimirAccion(mydata,accion);
 	//uso sleep para simular que que pasa tiempo
-	usleep( 20000 );
+	usleep(5000000 );
 	//doy la señal a la siguiente accion (cortar me habilita mezclar)
     sem_post(&mydata->semaforos_param.sem_mezclar);
 	
     pthread_exit(NULL);
+}
+
+void* mezclar(void *data) {
+	
+	char *accion = "mezclar";
+	struct parametro *mydata = data;
+	sem_wait(&mydata->semaforos_param.sem_mezclar);
+	imprimirAccion(mydata,accion);
+	usleep(3000000);
+   sem_post(&mydata->semaforos_param.sem_salar);
+   pthread_exit(NULL);
+}
+
+void* salar(void *data) {
+	char *accion = "salar";
+	struct parametro *mydata = data;
+	sem_wait(&mydata->semaforos_param.sem_salar);
+	pthread_mutex_lock(&mutex);
+	imprimirAccion(mydata,accion);
+	usleep(3000000);
+	pthread_mutex_unlock(&mutex);
+	sem_post(&mydata->semaforos_param.sem_usoSarten);
+   pthread_exit(NULL);
+}
+
+void* usoSarten(void *data) {
+	char *accion = "usoSarten";
+	struct parametro *mydata = data;
+	sem_wait(&mydata->semaforos_param.sem_usoSarten);
+	pthread_mutex_lock(&mutex);
+	imprimirAccion(mydata,accion);
+	usleep(3000000);
+	pthread_mutex_unlock(&mutex);
+	sem_post(&mydata->semaforos_param.sem_hornearPan);
+   pthread_exit(NULL);
+}
+
+void* hornearPan(void *data) {
+	char *accion = "hornearPan";
+	struct parametro *mydata = data;
+	sem_wait(&mydata->semaforos_param.sem_hornearPan);
+	pthread_mutex_lock(&mutex);
+	imprimirAccion(mydata,accion);
+	usleep(3000000);
+	pthread_mutex_unlock(&mutex);
+	sem_post(&mydata->semaforos_param.sem_armarSandwich);
+   pthread_exit(NULL);
+}
+
+void* cortarExtra(void *data) {
+	char *accion = "cortarExta";
+	struct parametro *mydata = data;
+	imprimirAccion(mydata,accion);
+	usleep(3000000);
+   pthread_exit(NULL);
+}
+
+void* armarSandwich(void *data) {
+	char *accion = "armarSandwich";
+	struct parametro *mydata = data;
+	sem_wait(&mydata->semaforos_param.sem_armarSandwich);
+	imprimirAccion(mydata,accion);
+	usleep(3000000);
+   pthread_exit(NULL);
 }
 
 void* ejecutarReceta(void *i) {
@@ -75,9 +144,15 @@ void* ejecutarReceta(void *i) {
 	//variables semaforos
 	sem_t sem_mezclar;
 	//crear variables semaforos aqui
-	
+	sem_t sem_salar;
+	sem_t sem_usoSarten;
+	sem_t sem_hornearPan;
+	sem_t sem_armarSandwich;
 	//variables hilos
-	pthread_t p1; 
+	pthread_t p1;
+	pthread_t p2;
+	pthread_t p3;
+	pthread_t p4;
 	//crear variables hilos aqui
 	
 	//numero del equipo (casteo el puntero a un int)
@@ -96,8 +171,10 @@ void* ejecutarReceta(void *i) {
 	//seteo semaforos
 	pthread_data->semaforos_param.sem_mezclar = sem_mezclar;
 	//setear demas semaforos al struct aqui
-	
-
+	pthread_data->semaforos_param.sem_salar = sem_salar;
+	pthread_data->semaforos_param.sem_usoSarten = sem_usoSarten;
+	pthread_data->semaforos_param.sem_hornearPan = sem_hornearPan;
+	pthread_data->semaforos_param.sem_armarSandwich = sem_armarSandwich;
 	//seteo las acciones y los ingredientes (Faltan acciones e ingredientes) ¿Se ve hardcodeado no? ¿Les parece bien?
      	strcpy(pthread_data->pasos_param[0].accion, "cortar");
 	    strcpy(pthread_data->pasos_param[0].ingredientes[0], "ajo");
@@ -109,13 +186,36 @@ void* ejecutarReceta(void *i) {
       strcpy(pthread_data->pasos_param[1].ingredientes[1], "perejil");
  	    strcpy(pthread_data->pasos_param[1].ingredientes[2], "huevo");
 	    strcpy(pthread_data->pasos_param[1].ingredientes[3], "carne");
-	
-	
+		
+		strcpy(pthread_data->pasos_param[2].accion, "salar");
+		
+		strcpy(pthread_data->pasos_param[3].accion, "usoSarten");
+		 
+		 strcpy(pthread_data->pasos_param[4].accion, "hornear");
+		 strcpy(pthread_data->pasos_param[4].ingredientes[0], "pan");
+		 
+		 strcpy(pthread_data->pasos_param[5].accion, "cortarExtra");
+		 strcpy(pthread_data->pasos_param[5].ingredientes[0], "lechuga");
+		 strcpy(pthread_data->pasos_param[5].ingredientes[1], "tomate");
+		 strcpy(pthread_data->pasos_param[5].ingredientes[2], "cebolla");
+		 strcpy(pthread_data->pasos_param[5].ingredientes[3], "pepino");
+		 
+		  strcpy(pthread_data->pasos_param[5].accion, "armarSandwich");
+		 
+		 
+		
+
+		
+
+
 	//inicializo los semaforos
 
 	sem_init(&(pthread_data->semaforos_param.sem_mezclar),0,0);
 	//inicializar demas semaforos aqui
-
+	sem_init(&(pthread_data->semaforos_param.sem_salar),0,0);
+	sem_init(&(pthread_data->semaforos_param.sem_usoSarten),0,0);
+	sem_init(&(pthread_data->semaforos_param.sem_hornearPan),0,0);
+	sem_init(&(pthread_data->semaforos_param.sem_armarSandwich),0,0);
 
 	//creo los hilos a todos les paso el struct creado (el mismo a todos los hilos) ya que todos comparten los semaforos 
     int rc;
@@ -124,10 +224,42 @@ void* ejecutarReceta(void *i) {
                                 cortar,             //funcion a ejecutar
                                 pthread_data);                     //parametros de la funcion a ejecutar, pasado por referencia
 	//crear demas hilos aqui
+    rc = pthread_create(&p1, 
+							NULL,
+								mezclar,
+								pthread_data);
 	
-	
+	rc = pthread_create(&p1, 
+							NULL,
+								salar,
+								pthread_data);
+								
+	rc = pthread_create(&p1, 
+							NULL,
+								usoSarten,
+								pthread_data);
+								
+	rc = pthread_create(&p1, 
+							NULL,
+								hornearPan,
+								pthread_data);
+								
+	rc = pthread_create(&p1, 
+							NULL,
+								cortarExtra,
+								pthread_data);
+							
+	rc = pthread_create(&p1, 
+							NULL,
+								armarSandwich,
+								pthread_data);
+
+
 	//join de todos los hilos
 	pthread_join (p1,NULL);
+	pthread_join (p2,NULL);
+	pthread_join (p3,NULL);
+	pthread_join (p4,NULL);
 	//crear join de demas hilos
 
 
@@ -141,7 +273,10 @@ void* ejecutarReceta(void *i) {
 	//destruccion de los semaforos 
 	sem_destroy(&sem_mezclar);
 	//destruir demas semaforos 
-	
+	sem_destroy(&sem_salar);
+	sem_destroy(&sem_usoSarten);
+	sem_destroy(&sem_hornearPan);
+	sem_destroy(&sem_armarSandwich);
 	//salida del hilo
 	 pthread_exit(NULL);
 }
@@ -149,41 +284,57 @@ void* ejecutarReceta(void *i) {
 
 int main ()
 {
-	//creo los nombres de los equipos 
+	//creo los nombres de los equipos
 	int rc;
 	int *equipoNombre1 =malloc(sizeof(*equipoNombre1));
 	int *equipoNombre2 =malloc(sizeof(*equipoNombre2));
+	int *equipoNombre3 =malloc(sizeof(*equipoNombre3));
+	int *equipoNombre4 =malloc(sizeof(*equipoNombre4));
 //faltan equipos
-  
+
 	*equipoNombre1 = 1;
 	*equipoNombre2 = 2;
+	*equipoNombre3 = 3;
+	*equipoNombre4 = 4;
 
 	//creo las variables los hilos de los equipos
-	pthread_t equipo1; 
+	pthread_t equipo1;
 	pthread_t equipo2;
+	pthread_t equipo3;
+	pthread_t equipo4;
 //faltan hilos
-  
+
 	//inicializo los hilos de los equipos
     rc = pthread_create(&equipo1,                           //identificador unico
                             NULL,                          //atributos del thread
                                 ejecutarReceta,             //funcion a ejecutar
-                                equipoNombre1); 
+                                equipoNombre1);
 
     rc = pthread_create(&equipo2,                           //identificador unico
                             NULL,                          //atributos del thread
                                 ejecutarReceta,             //funcion a ejecutar
                                 equipoNombre2);
+    rc = pthread_create(&equipo3,
+			    NULL,
+				ejecutarReceta,
+				equipoNombre3);
+    rc = pthread_create(&equipo4,
+			    NULL,
+				ejecutarReceta,
+				equipoNombre4);
   //faltn inicializaciones
 
 
    if (rc){
        printf("Error:unable to create thread, %d \n", rc);
        exit(-1);
-     } 
+     }
 
 	//join de todos los hilos
 	pthread_join (equipo1,NULL);
 	pthread_join (equipo2,NULL);
+	pthread_join (equipo3,NULL);
+	pthread_join (equipo4,NULL);
 //.. faltan joins
 
 
