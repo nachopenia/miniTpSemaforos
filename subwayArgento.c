@@ -283,7 +283,11 @@ void* ejecutarReceta(void *i) {
 
 
 int main ()
+
 {
+	FILE * receta = fopen("receta.txt","r");
+
+
 	//creo los nombres de los equipos
 	int rc;
 	int *equipoNombre1 =malloc(sizeof(*equipoNombre1));
